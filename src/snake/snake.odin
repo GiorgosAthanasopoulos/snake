@@ -4,8 +4,9 @@ import rl "vendor:raylib"
 import cfg "../config"
 import "../lib"
 import "../util"
+import "../assets"
 
-// TODO: Add bgm, sfx, apple/snake sprites?
+// TODO: Add bgm, sfx
 
 Snake :: struct {
     debug: bool,
@@ -21,7 +22,9 @@ Snake :: struct {
     timerMove: f32,
 
     lost: bool,
-    score: i32
+    score: i32,
+
+    assets: ^assets.Assets
 }
 
 Init :: proc() -> ^Snake {
@@ -38,6 +41,7 @@ Init :: proc() -> ^Snake {
     game.score = 0
     HandleSpawnApple(game)
     game.incrementTail = false
+    game.assets = assets.Init()
 
     return game
 }
@@ -64,13 +68,21 @@ HandleResize :: proc(game: ^Snake) {
 
 HandleKeybinds :: proc(game: ^Snake) {
         if rl.IsKeyPressed(cfg.KEY_MOVE_UP) || rl.IsKeyPressed(cfg.KEY_MOVE_UP_2) || rl.IsKeyPressed(cfg.KEY_MOVE_UP_3) {
-            game.direction = .UP
+            if game.direction != .DOWN || cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
+                game.direction = .UP
+            }
         } else if rl.IsKeyPressed(cfg.KEY_MOVE_DOWN) || rl.IsKeyPressed(cfg.KEY_MOVE_DOWN_2) || rl.IsKeyPressed(cfg.KEY_MOVE_DOWN_3) {
-            game.direction = .DOWN
+            if game.direction != .UP || cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
+                game.direction = .DOWN
+            }
         } else if rl.IsKeyPressed(cfg.KEY_MOVE_LEFT) ||  rl.IsKeyPressed(cfg.KEY_MOVE_LEFT_2) || rl.IsKeyPressed(cfg.KEY_MOVE_LEFT_3) {
-            game.direction = .LEFT
+            if game.direction != .RIGHT || cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
+                game.direction = .LEFT
+            }
         } else if rl.IsKeyPressed(cfg.KEY_MOVE_RIGHT) || rl.IsKeyPressed(cfg.KEY_MOVE_RIGHT_2) || rl.IsKeyPressed(cfg.KEY_MOVE_RIGHT_3) {
-            game.direction = .RIGHT
+            if game.direction != .LEFT || cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
+                game.direction = .RIGHT
+            }
         }
 }
 
@@ -104,19 +116,35 @@ HandleOutOfBoundaries :: proc(game: ^Snake) {
     switch game.direction {
         case .UP:
             if game.snake[0].y == -1 {
-                game.lost = true
+                if !cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
+                    game.lost = true
+                } else {
+                    game.snake[0] = {game.snake[0].x, cfg.TILE_AMOUNT_AXIS - 1}
+                }
             }
         case .DOWN:
             if game.snake[0].y == cfg.TILE_AMOUNT_AXIS {
-                game.lost = true
+                if !cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
+                    game.lost = true
+                } else {
+                    game.snake[0] = {game.snake[0].x, 0}
+                }
             }
         case .LEFT:
             if game.snake[0].x == -1 {
-                game.lost = true
+                if !cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
+                    game.lost = true
+                } else {
+                    game.snake[0] = {cfg.TILE_AMOUNT_AXIS - 1, game.snake[0].y}
+                }
             }
         case .RIGHT:
             if game.snake[0].x == cfg.TILE_AMOUNT_AXIS {
-                game.lost = true
+                if !cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
+                    game.lost = true
+                } else {
+                    game.snake[0] = {0, game.snake[0].y}
+                }
             }
         case .NONE:
             break
@@ -130,6 +158,7 @@ HandleRestart :: proc(game: ^Snake) {
     game.timerMove = cfg.TIMER_MOVE
     game.lost = false
     game.score = 0
+    HandleSpawnApple(game)
 }
 
 HandleCollisions :: proc(game: ^Snake) {
@@ -166,11 +195,18 @@ Update :: proc(game: ^Snake) {
 }
 
 DrawSnake :: proc(game: ^Snake) {
-    color := cfg.COLOR_HEAD
+    texture := game.assets.head
+    tint := cfg.COLOR_HEAD_TINT
     for i := 0; i < len(game.snake); i += 1 {
-        rl.DrawRectangle(game.snake[i].x * game.tileSize.x, game.snake[i].y * game.tileSize.y, game.tileSize.x, game.tileSize.y, color)
+        rl.DrawTexturePro(texture, {0, 0, f32(texture.width), f32(texture.height)},
+                          {f32(game.snake[i].x * game.tileSize.x),
+                           f32(game.snake[i].y * game.tileSize.y),
+                           f32(game.tileSize.x),
+                           f32(game.tileSize.y)},
+                            {0, 0}, 0, tint)
         if i == 0 {
-            color = cfg.COLOR_BODY
+            texture = game.assets.body
+            tint = cfg.COLOR_BODY_TINT
         }
     }
 }
@@ -207,14 +243,39 @@ DrawDebug :: proc(game: ^Snake) {
     }
     textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
     rl.DrawText(text, cfg.DEBUG_DIRECTION_TEXT_X_PADDING, game.winSize.y - textSize.y, textSize.y, cfg.COLOR_TEXT)
+
+    wrapSizeY: i32
+    if cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
+        text :: "Wrap: True"
+        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
+        wrapSizeY = textSize.y
+        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+    } else {
+        text :: "Wrap: False"
+        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
+        wrapSizeY = textSize.y
+        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+    }
+
+    if cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
+        text :: "Move Opposite: True"
+        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
+        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, wrapSizeY + cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+    } else {
+        text :: "Move Opposite: False"
+        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
+        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, wrapSizeY + cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+    }
 }
 
 DrawApple :: proc(game: ^Snake) {
-    rl.DrawRectangle(game.apple.x * game.tileSize.x,
-                  game.apple.y * game.tileSize.y,
-                  game.tileSize.x,
-                  game.tileSize.y,
-                 cfg.COLOR_APPLE)
+    rl.DrawTexturePro(game.assets.apple, {0, 0, f32(game.assets.apple.width),
+                                          f32(game.assets.apple.height)},
+                      {f32(game.apple.x * game.tileSize.x),
+                       f32(game.apple.y * game.tileSize.y),
+                       f32(game.tileSize.x),
+                       f32(game.tileSize.y)},
+                      {0, 0}, 0, cfg.COLOR_APPLE_TINT)
 }
 
 Draw :: proc(game: ^Snake) {
@@ -236,5 +297,6 @@ Draw :: proc(game: ^Snake) {
 }
 
 Close :: proc(game: ^Snake) {
+    assets.Close(game.assets)
     free(game)
 }
