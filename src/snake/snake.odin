@@ -10,7 +10,10 @@ Snake :: struct {
 
     winSize: lib.Vector2i,
     tileSize: lib.Vector2i,
+
     snake: [dynamic]lib.Vector2i,
+    incrementTail: bool,
+    apple: lib.Vector2i,
 
     direction: lib.Direction,
     timerMove: f32,
@@ -20,19 +23,36 @@ Snake :: struct {
 }
 
 Init :: proc() -> ^Snake {
-    snake := new(Snake)
+    game := new(Snake)
 
-    snake.debug = cfg.DEBUG_DEFAULT_ON
-    snake.winSize = { cfg.WINDOW_SIZE.x, cfg.WINDOW_SIZE.y }
-    snake.tileSize = { snake.winSize.x / cfg.TILE_AMOUNT_AXIS, snake.winSize.y / cfg.TILE_AMOUNT_AXIS }
-    snake.snake = make([dynamic]lib.Vector2i)
-    append(&snake.snake, cfg.DEFAULT_HEAD_POSITION)
-    snake.direction = cfg.DEFAULT_DIRECTION
-    snake.timerMove = cfg.TIMER_MOVE
-    snake.lost = false
-    snake.score = 0
+    game.debug = cfg.DEBUG_DEFAULT_ON
+    game.winSize = { cfg.WINDOW_SIZE.x, cfg.WINDOW_SIZE.y }
+    game.tileSize = { game.winSize.x / cfg.TILE_AMOUNT_AXIS, game.winSize.y / cfg.TILE_AMOUNT_AXIS }
+    game.snake = make([dynamic]lib.Vector2i)
+    append(&game.snake, cfg.DEFAULT_HEAD_POSITION)
+    game.direction = cfg.DEFAULT_DIRECTION
+    game.timerMove = cfg.TIMER_MOVE
+    game.lost = false
+    game.score = 0
+    HandleSpawnApple(game)
+    game.incrementTail = false
 
-    return snake
+    return game
+}
+
+HandleSpawnApple :: proc(game: ^Snake) {
+    outer_for: for true {
+        new_apple_pos: lib.Vector2i = { rl.GetRandomValue(0, cfg.TILE_AMOUNT_AXIS - 1), rl.GetRandomValue(0, cfg.TILE_AMOUNT_AXIS - 1) }
+
+        for i := 0; i <len(game.snake); i += 1 {
+            if new_apple_pos.x == game.snake[i].x && new_apple_pos.y == game.snake[i].y {
+                continue outer_for
+            }
+        }
+
+        game.apple = new_apple_pos
+        return
+    }
 }
 
 HandleResize :: proc(game: ^Snake) {
@@ -58,15 +78,22 @@ HandleMoving :: proc(game: ^Snake) {
         game.timerMove = cfg.TIMER_MOVE
         switch game.direction {
         case .UP:
-            game.snake[0].y -= 1
+            inject_at(&game.snake, 0, lib.Vector2i { game.snake[0].x, game.snake[0].y - 1 })
         case .DOWN:
-            game.snake[0].y += 1
+            inject_at(&game.snake, 0, lib.Vector2i { game.snake[0].x, game.snake[0].y + 1 })
         case .LEFT:
-            game.snake[0].x -= 1
+            inject_at(&game.snake, 0, lib.Vector2i { game.snake[0].x - 1, game.snake[0].y })
         case .RIGHT:
-            game.snake[0].x += 1
+            inject_at(&game.snake, 0, lib.Vector2i { game.snake[0].x + 1, game.snake[0].y })
         case .NONE:
             break
+        }
+        if game.direction != .NONE {
+            if game.incrementTail {
+                game.incrementTail = false
+            } else {
+                pop(&game.snake)
+            }
         }
     }
 }
@@ -74,19 +101,19 @@ HandleMoving :: proc(game: ^Snake) {
 HandleOutOfBoundaries :: proc(game: ^Snake) {
     switch game.direction {
         case .UP:
-            if game.snake[0].y == 0 {
+            if game.snake[0].y == -1 {
                 game.lost = true
             }
         case .DOWN:
-            if game.snake[0].y == cfg.TILE_AMOUNT_AXIS - 1 {
+            if game.snake[0].y == cfg.TILE_AMOUNT_AXIS {
                 game.lost = true
             }
         case .LEFT:
-            if game.snake[0].x == 0 {
+            if game.snake[0].x == -1 {
                 game.lost = true
             }
         case .RIGHT:
-            if game.snake[0].x == cfg.TILE_AMOUNT_AXIS - 1 {
+            if game.snake[0].x == cfg.TILE_AMOUNT_AXIS {
                 game.lost = true
             }
         case .NONE:
@@ -103,6 +130,18 @@ HandleRestart :: proc(game: ^Snake) {
     game.score = 0
 }
 
+HandleCollisions :: proc(game: ^Snake) {
+    if game.snake[0].x == game.apple.x && game.snake[0].y == game.apple.y {
+        HandleSpawnApple(game)
+        game.incrementTail = true
+    }
+    for i := 1; i < len(game.snake); i += 1 {
+        if game.snake[0].x == game.snake[i].x && game.snake[0].y == game.snake[i].y {
+            game.lost = true
+        }
+    }
+}
+
 Update :: proc(game: ^Snake) {
     if rl.IsWindowResized() {
         HandleResize(game)
@@ -112,6 +151,7 @@ Update :: proc(game: ^Snake) {
         HandleKeybinds(game)
         HandleMoving(game)
         HandleOutOfBoundaries(game)
+        HandleCollisions(game)
     }
 
     if rl.IsKeyPressed(cfg.KEY_RESTART) {
@@ -167,11 +207,20 @@ DrawDebug :: proc(game: ^Snake) {
     rl.DrawText(text, cfg.DEBUG_DIRECTION_TEXT_X_PADDING, game.winSize.y - textSize.y, textSize.y, cfg.COLOR_TEXT)
 }
 
+DrawApple :: proc(game: ^Snake) {
+    rl.DrawRectangle(game.apple.x * game.tileSize.x,
+                  game.apple.y * game.tileSize.y,
+                  game.tileSize.x,
+                  game.tileSize.y,
+                 cfg.COLOR_APPLE)
+}
+
 Draw :: proc(game: ^Snake) {
     rl.BeginDrawing()
     rl.ClearBackground(cfg.COLOR_BG)
 
     DrawSnake(game)
+    DrawApple(game)
 
     if game.lost {
         DrawLost(game)
