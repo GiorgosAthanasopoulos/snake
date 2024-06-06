@@ -5,6 +5,8 @@ import cfg "../config"
 import "../lib"
 import "../util"
 
+// TODO: Add bgm, sfx, apple/snake sprites?
+
 Snake :: struct {
     debug: bool,
 
