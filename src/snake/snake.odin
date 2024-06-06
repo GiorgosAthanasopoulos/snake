@@ -43,6 +43,8 @@ Init :: proc() -> ^Snake {
     game.incrementTail = false
     game.assets = assets.Init()
 
+    rl.PlayMusicStream(game.assets.bgm)
+
     return game
 }
 
@@ -149,6 +151,11 @@ HandleOutOfBoundaries :: proc(game: ^Snake) {
         case .NONE:
             break
     }
+
+    if game.lost {
+        rl.StopMusicStream(game.assets.bgm)
+        rl.PlaySound(game.assets.lost)
+    }
 }
 
 HandleRestart :: proc(game: ^Snake) {
@@ -159,18 +166,36 @@ HandleRestart :: proc(game: ^Snake) {
     game.lost = false
     game.score = 0
     HandleSpawnApple(game)
+    if !rl.IsMusicStreamPlaying(game.assets.bgm) {
+        rl.PlayMusicStream(game.assets.bgm)
+    }
 }
 
 HandleCollisions :: proc(game: ^Snake) {
     if game.snake[0].x == game.apple.x && game.snake[0].y == game.apple.y {
+        rl.PlaySound(game.assets.eat)
         HandleSpawnApple(game)
         game.incrementTail = true
     }
     for i := 1; i < len(game.snake); i += 1 {
         if game.snake[0].x == game.snake[i].x && game.snake[0].y == game.snake[i].y {
             game.lost = true
+            rl.StopMusicStream(game.assets.bgm)
+            rl.PlaySound(game.assets.lost)
         }
     }
+}
+
+HandleMusic :: proc(game:^Snake) {
+    if rl.IsKeyPressed(cfg.KEY_MUTE) {
+        if rl.IsMusicStreamPlaying(game.assets.bgm) {
+            rl.PauseMusicStream(game.assets.bgm)
+        } else {
+            rl.ResumeMusicStream(game.assets.bgm)
+        }
+    }
+
+    rl.UpdateMusicStream(game.assets.bgm)
 }
 
 Update :: proc(game: ^Snake) {
@@ -192,6 +217,8 @@ Update :: proc(game: ^Snake) {
     if rl.IsKeyPressed(cfg.KEY_TOGGLE_DEBUG) {
         game.debug = !game.debug
     }
+
+    HandleMusic(game)
 }
 
 DrawSnake :: proc(game: ^Snake) {

@@ -25,6 +25,7 @@ KEY_MOVE_DOWN_3: rl.KeyboardKey : .J
 KEY_MOVE_LEFT_3: rl.KeyboardKey : .H
 KEY_MOVE_RIGHT_3: rl.KeyboardKey : .L
 KEY_RESTART: rl.KeyboardKey : .R
+KEY_MUTE: rl.KeyboardKey : .M
 
 DEFAULT_FONT_SIZE :: 1000
 COLLISION_RECTS_THICKNESS :: 1.0
@@ -39,8 +40,10 @@ DIRECTION_DOWN_TEXT: cstring = "Direction: Down"
 DIRECTION_LEFT_TEXT: cstring = "Direction: Left"
 DIRECTION_RIGHT_TEXT: cstring = "Direction: Right"
 DEFAULT_DIRECTION: lib.Direction : .NONE
-ALLOW_TURNING_OPPOSITE_WAY_SUICIDE :: false
-ALLOW_SNAKE_WRAP_THROUGH_BORDER :: true
+ALLOW_TURNING_OPPOSITE_WAY_SUICIDE :: true
+ALLOW_SNAKE_WRAP_THROUGH_BORDER :: false
+MUSIC_VOLUME :: 0.7
+SOUND_VOLUME :: 1.0
 
 COLOR_BG :: rl.BLACK
 COLOR_COLLISION_RECTS :: rl.RED
@@ -63,3 +66,8 @@ SPRITES_PATH :: ASSETS_PATH + "sprites/"
 APPLE_PATH :: SPRITES_PATH + "apple.png"
 HEAD_PATH :: SPRITES_PATH + "head.png"
 BODY_PATH :: SPRITES_PATH + "body.png"
+MUSIC_PATH :: ASSETS_PATH + "music/"
+BGM_PATH :: MUSIC_PATH + "bgm.mp3"
+SOUND_PATH :: ASSETS_PATH + "sounds/"
+EAT_PATH :: SOUND_PATH + "eat.mp3"
+LOST_PATH :: SOUND_PATH + "lost.mp3"
