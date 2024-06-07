@@ -24,7 +24,8 @@ Snake :: struct {
     lost: bool,
     score: i32,
 
-    assets: ^assets.Assets
+    assets: ^assets.Assets,
+    mute: bool
 }
 
 Init :: proc() -> ^Snake {
@@ -42,6 +43,7 @@ Init :: proc() -> ^Snake {
     HandleSpawnApple(game)
     game.incrementTail = false
     game.assets = assets.Init()
+    game.mute = false
 
     rl.PlayMusicStream(game.assets.bgm)
 
@@ -166,7 +168,7 @@ HandleRestart :: proc(game: ^Snake) {
     game.lost = false
     game.score = 0
     HandleSpawnApple(game)
-    if !rl.IsMusicStreamPlaying(game.assets.bgm) {
+    if !rl.IsMusicStreamPlaying(game.assets.bgm) && !game.mute {
         rl.PlayMusicStream(game.assets.bgm)
     }
 }
@@ -189,8 +191,10 @@ HandleCollisions :: proc(game: ^Snake) {
 HandleMusic :: proc(game:^Snake) {
     if rl.IsKeyPressed(cfg.KEY_MUTE) {
         if rl.IsMusicStreamPlaying(game.assets.bgm) {
+            game.mute = true
             rl.PauseMusicStream(game.assets.bgm)
         } else {
+            game.mute = false
             rl.ResumeMusicStream(game.assets.bgm)
         }
     }
