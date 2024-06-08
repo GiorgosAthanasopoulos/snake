@@ -5,11 +5,11 @@ import cfg "../config"
 import "../lib"
 import "../util"
 import "../assets"
-
-// TODO: Add bgm, sfx
+import "core:fmt"
 
 Snake :: struct {
     debug: bool,
+    debugLogTimer: f32,
 
     winSize: lib.Vector2i,
     tileSize: lib.Vector2i,
@@ -44,6 +44,7 @@ Init :: proc() -> ^Snake {
     game.incrementTail = false
     game.assets = assets.Init()
     game.mute = false
+    game.debugLogTimer = 0.0
 
     rl.PlayMusicStream(game.assets.bgm)
 
@@ -178,6 +179,7 @@ HandleCollisions :: proc(game: ^Snake) {
         rl.PlaySound(game.assets.eat)
         HandleSpawnApple(game)
         game.incrementTail = true
+        game.score += 1
     }
     for i := 1; i < len(game.snake); i += 1 {
         if game.snake[0].x == game.snake[i].x && game.snake[0].y == game.snake[i].y {
@@ -259,43 +261,53 @@ DrawDebug :: proc(game: ^Snake) {
     textSize := util.AssertTextFitsInViewport(cfg.DEBUG_TEXT, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
     rl.DrawText(cfg.DEBUG_TEXT, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, game.winSize.y - textSize.y, textSize.y, cfg.COLOR_TEXT)
 
-    text :=  cfg.DIRECTION_NONE_TEXT
+    directionText :=  cfg.DIRECTION_NONE_TEXT
     switch game.direction {
     case .UP:
-        text = cfg.DIRECTION_UP_TEXT
+        directionText = cfg.DIRECTION_UP_TEXT
     case .DOWN:
-        text = cfg.DIRECTION_DOWN_TEXT
+        directionText = cfg.DIRECTION_DOWN_TEXT
     case .LEFT:
-        text = cfg.DIRECTION_LEFT_TEXT
+        directionText = cfg.DIRECTION_LEFT_TEXT
     case .RIGHT:
-        text = cfg.DIRECTION_RIGHT_TEXT
+        directionText = cfg.DIRECTION_RIGHT_TEXT
     case .NONE:
         break
     }
-    textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
-    rl.DrawText(text, cfg.DEBUG_DIRECTION_TEXT_X_PADDING, game.winSize.y - textSize.y, textSize.y, cfg.COLOR_TEXT)
+    textSize = util.AssertTextFitsInViewport(directionText, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
+    rl.DrawText(directionText, cfg.DEBUG_DIRECTION_TEXT_X_PADDING, game.winSize.y - textSize.y, textSize.y, cfg.COLOR_TEXT)
 
     wrapSizeY: i32
+    wrapText: cstring
     if cfg.ALLOW_SNAKE_WRAP_THROUGH_BORDER {
-        text :: "Wrap: True"
-        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
-        wrapSizeY = textSize.y
-        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+        wrapText = "Wrap: True"
     } else {
-        text :: "Wrap: False"
-        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
-        wrapSizeY = textSize.y
-        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+        wrapText = "Wrap: False"
     }
+    textSize = util.AssertTextFitsInViewport(wrapText, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO, game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO })
+    wrapSizeY = textSize.y
+    rl.DrawText(wrapText, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
 
+    oppositeText: cstring
     if cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
-        text :: "Move Opposite: True"
-        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
-        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, wrapSizeY + cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+        oppositeText = "Move Opposite: True"
     } else {
-        text :: "Move Opposite: False"
-        textSize = util.AssertTextFitsInViewport(text, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
-        rl.DrawText(text, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, wrapSizeY + cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+        oppositeText = "Move Opposite: False"
+    }
+    textSize = util.AssertTextFitsInViewport(oppositeText, cfg.DEFAULT_FONT_SIZE, { game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3), game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3) })
+    rl.DrawText(oppositeText, game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING, wrapSizeY + cfg.DEBUG_TEXT_PADDING, textSize.y, cfg.COLOR_TEXT)
+
+    game.debugLogTimer -= rl.GetFrameTime()
+    if game.debugLogTimer <= 0.0 {
+       game.debugLogTimer = cfg.DEBUG_LOG_TIMER
+
+        util.ClearConsole()
+        fmt.println("==DEBUG MODE==")
+        fmt.println("FPS:", rl.GetFPS())
+        fmt.println(directionText)
+        fmt.println(wrapText)
+        fmt.println(oppositeText)
+        fmt.println("Reloading every", cfg.DEBUG_LOG_TIMER, "seconds...")
     }
 }
 

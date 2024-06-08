@@ -2,6 +2,7 @@ package util
 
 import rl "vendor:raylib"
 import "../lib"
+import "core:fmt"
 
 // Returns a vector where x is width and y is height of text so that it fits within maxSize vector with font as close to fontSize (descending)
 AssertTextFitsInViewport :: proc(text: cstring, fontSize: i32, maxSize: lib.Vector2i) -> lib.Vector2i {
@@ -14,4 +15,8 @@ AssertTextFitsInViewport :: proc(text: cstring, fontSize: i32, maxSize: lib.Vect
     }
 
     return { textW, fontSize }
+}
+
+ClearConsole :: proc() {
+    fmt.println("\033[H\033[2J")
 }
