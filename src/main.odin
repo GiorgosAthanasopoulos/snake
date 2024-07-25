@@ -1,18 +1,18 @@
 package main
 
-import rl "vendor:raylib"
 import mlr "./my_raylib"
 import "./snake"
+import rl "vendor:raylib"
 
 main :: proc() {
-    mlr.Init()
-    game := snake.Init()
+	mlr.Init()
+	game := snake.Init()
 
-    for !rl.WindowShouldClose() {
-        snake.Update(game)
-        snake.Draw(game)
-    }
+	for !rl.WindowShouldClose() {
+		snake.Update(game)
+		snake.Draw(game)
+	}
 
-    snake.Close(game)
-    mlr.Close()
+	snake.Close(game)
+	mlr.Close()
 }

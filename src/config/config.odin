@@ -1,16 +1,16 @@
 package config
 
-import rl "vendor:raylib"
 import "../lib"
+import rl "vendor:raylib"
 
-WINDOW_FLAGS : rl.ConfigFlags : { .WINDOW_RESIZABLE }
-WINDOW_SIZE: lib.Vector2i : { 1280, 720 }
+WINDOW_FLAGS: rl.ConfigFlags : {.WINDOW_RESIZABLE}
+WINDOW_SIZE: lib.Vector2i : {1280, 720}
 WINDOW_TITLE :: "Snake"
 WINDOW_TARGET_FPS :: 60
-WINDOW_MIN_SIZE: lib.Vector2i : { 640, 360 }
-WINDOW_MAX_SIZE: lib.Vector2i : { 3840, 2160 }
+WINDOW_MIN_SIZE: lib.Vector2i : {640, 360}
+WINDOW_MAX_SIZE: lib.Vector2i : {3840, 2160}
 
-KEY_EXIT : rl.KeyboardKey : .KEY_NULL
+KEY_EXIT: rl.KeyboardKey : .KEY_NULL
 KEY_TOGGLE_DEBUG: rl.KeyboardKey : .F2
 KEY_MOVE_UP: rl.KeyboardKey : .UP
 KEY_MOVE_DOWN: rl.KeyboardKey : .DOWN
@@ -30,7 +30,7 @@ KEY_MUTE: rl.KeyboardKey : .M
 DEFAULT_FONT_SIZE :: 1000
 COLLISION_RECTS_THICKNESS :: 1.0
 TILE_AMOUNT_AXIS :: 16
-DEFAULT_HEAD_POSITION: lib.Vector2i = { TILE_AMOUNT_AXIS / 2, TILE_AMOUNT_AXIS / 2 }
+DEFAULT_HEAD_POSITION: lib.Vector2i = {TILE_AMOUNT_AXIS / 2, TILE_AMOUNT_AXIS / 2}
 TIMER_MOVE: f32 : 0.25
 TEXT_SIZE_TO_WINDOW_RATIO :: 3
 YOU_LOST_TEXT: cstring = "You lost!"
