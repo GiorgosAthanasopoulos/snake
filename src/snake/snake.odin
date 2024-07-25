@@ -260,10 +260,10 @@ DrawSnake :: proc(game: ^Snake) {
 DrawLost :: proc(game: ^Snake) {
 	textSize := util.AssertTextFitsInViewport(
 		cfg.YOU_LOST_TEXT,
-		cfg.DEFAULT_FONT_SIZE,
+		cfg.FONT_DEFAULT_SIZE,
 		{
-			game.winSize.x - game.winSize.x / cfg.TEXT_SIZE_TO_WINDOW_RATIO,
-			game.winSize.y - game.winSize.y / cfg.TEXT_SIZE_TO_WINDOW_RATIO,
+			f32(game.winSize.x - game.winSize.x / cfg.TEXT_SIZE_TO_WINDOW_RATIO),
+			f32(game.winSize.y - game.winSize.y / cfg.TEXT_SIZE_TO_WINDOW_RATIO),
 		},
 	)
 	rl.DrawText(
@@ -276,6 +276,8 @@ DrawLost :: proc(game: ^Snake) {
 }
 
 DrawDebug :: proc(game: ^Snake) {
+	settingsStack: i32 = 0
+
 	for x: i32 = 0; x < cfg.TILE_AMOUNT_AXIS; x += 1 {
 		for y: i32 = 0; y < cfg.TILE_AMOUNT_AXIS; y += 1 {
 			rl.DrawRectangleLinesEx(
@@ -295,16 +297,16 @@ DrawDebug :: proc(game: ^Snake) {
 
 	textSize := util.AssertTextFitsInViewport(
 		cfg.DEBUG_TEXT,
-		cfg.DEFAULT_FONT_SIZE,
-		{
-			game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO,
-			game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO,
-		},
+		cfg.FONT_DEFAULT_SIZE,
+		{f32(game.tileSize.x * 2), f32(game.tileSize.y) / cfg.DEBUG_LARGE_TEXT_Y_RATIO_TO_CELL},
 	)
+	lastTileY :=
+		game.winSize.y -
+		(game.winSize.y - game.winSize.y / game.tileSize.y * (game.tileSize.y - 1))
 	rl.DrawText(
 		cfg.DEBUG_TEXT,
 		game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING,
-		game.winSize.y - textSize.y,
+		lastTileY - cfg.DEBUG_TEXT_PADDING,
 		textSize.y,
 		cfg.COLOR_TEXT,
 	)
@@ -324,16 +326,13 @@ DrawDebug :: proc(game: ^Snake) {
 	}
 	textSize = util.AssertTextFitsInViewport(
 		directionText,
-		cfg.DEFAULT_FONT_SIZE,
-		{
-			game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3),
-			game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3),
-		},
+		cfg.FONT_DEFAULT_SIZE,
+		{f32(game.tileSize.x * 3), f32(game.tileSize.y) / cfg.DEBUG_LARGE_TEXT_Y_RATIO_TO_CELL},
 	)
 	rl.DrawText(
 		directionText,
 		cfg.DEBUG_DIRECTION_TEXT_X_PADDING,
-		game.winSize.y - textSize.y,
+		lastTileY - cfg.DEBUG_TEXT_PADDING,
 		textSize.y,
 		cfg.COLOR_TEXT,
 	)
@@ -347,20 +346,18 @@ DrawDebug :: proc(game: ^Snake) {
 	}
 	textSize = util.AssertTextFitsInViewport(
 		wrapText,
-		cfg.DEFAULT_FONT_SIZE,
-		{
-			game.winSize.x / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO,
-			game.winSize.y / cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO,
-		},
+		cfg.FONT_DEFAULT_SIZE,
+		{f32(game.tileSize.x * 3), f32(game.tileSize.y) / cfg.DEBUG_LARGE_TEXT_Y_RATIO_TO_CELL},
 	)
 	wrapSizeY = textSize.y
 	rl.DrawText(
 		wrapText,
-		game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING,
-		cfg.DEBUG_TEXT_PADDING,
+		game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING * 2,
+		settingsStack * game.tileSize.y + cfg.DEBUG_TEXT_PADDING,
 		textSize.y,
 		cfg.COLOR_TEXT,
 	)
+	settingsStack += 1
 
 	oppositeText: cstring
 	if cfg.ALLOW_TURNING_OPPOSITE_WAY_SUICIDE {
@@ -370,19 +367,17 @@ DrawDebug :: proc(game: ^Snake) {
 	}
 	textSize = util.AssertTextFitsInViewport(
 		oppositeText,
-		cfg.DEFAULT_FONT_SIZE,
-		{
-			game.winSize.x / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3),
-			game.winSize.y / (cfg.DEBUG_TEXT_SIZE_TO_WINDOW_RATIO / 3),
-		},
+		cfg.FONT_DEFAULT_SIZE,
+		{f32(game.tileSize.x * 4), f32(game.tileSize.y) / cfg.DEBUG_LARGE_TEXT_Y_RATIO_TO_CELL},
 	)
 	rl.DrawText(
 		oppositeText,
-		game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING,
-		wrapSizeY + cfg.DEBUG_TEXT_PADDING,
+		game.winSize.x - textSize.x - cfg.DEBUG_TEXT_PADDING * 2,
+		settingsStack * game.tileSize.y + cfg.DEBUG_TEXT_PADDING,
 		textSize.y,
 		cfg.COLOR_TEXT,
 	)
+	settingsStack += 1
 
 	game.debugLogTimer -= rl.GetFrameTime()
 	if game.debugLogTimer <= 0.0 {
@@ -394,6 +389,7 @@ DrawDebug :: proc(game: ^Snake) {
 		fmt.println(directionText)
 		fmt.println(wrapText)
 		fmt.println(oppositeText)
+		fmt.println("Score:", game.score)
 		fmt.println("Reloading every", cfg.DEBUG_LOG_TIMER, "seconds...")
 	}
 }
@@ -415,12 +411,17 @@ DrawApple :: proc(game: ^Snake) {
 	)
 }
 
+DrawUI :: proc(game: ^Snake) {
+
+}
+
 Draw :: proc(game: ^Snake) {
 	rl.BeginDrawing()
 	rl.ClearBackground(cfg.COLOR_BG)
 
 	DrawSnake(game)
 	DrawApple(game)
+	DrawUI(game)
 
 	if game.lost {
 		DrawLost(game)

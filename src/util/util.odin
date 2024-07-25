@@ -8,12 +8,12 @@ import rl "vendor:raylib"
 AssertTextFitsInViewport :: proc(
 	text: cstring,
 	fontSize: i32,
-	maxSize: lib.Vector2i,
+	maxSize: rl.Vector2,
 ) -> lib.Vector2i {
 	textW := rl.MeasureText(text, fontSize)
 	fontSize := fontSize
 
-	for textW > maxSize.x || fontSize > maxSize.y {
+	for f32(textW) > maxSize.x || f32(fontSize) > maxSize.y {
 		fontSize -= 1
 		textW = rl.MeasureText(text, fontSize)
 	}
